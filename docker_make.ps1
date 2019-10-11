@@ -1,0 +1,1 @@
+docker run --rm -it -v ${pwd}:/work -w /work/build vtk-opengl2 make

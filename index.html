@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>EMSCripten with EGL</title>
+    <style>
+        body {
+            font-family: arial;
+            margin: 0;
+            padding: none;
+        }
+
+        canvas.emscripten { 
+          border: 0px none; 
+          background-color: black;
+          position:absolute;
+          width:100%;
+          height:100%;
+        }
+    </style>
+  </head>
+
+
+  <body>    
+    <canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+    <script type='text/javascript'>
+      var Module = {
+        canvas: (function() {
+          var canvas = document.getElementById('canvas');
+          canvas.addEventListener("webglcontextlost", function(e) { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
+          return canvas;
+        })(),
+      };      
+    </script>
+    <script async type="text/javascript" src="build/index.js"></script>
+
+
+    <script type='text/javascript'>
+        var gl = Module.canvas.getContext('webgl2');
+        console.log(gl.getParameter(gl.VERSION));
+    </script>
+
+  </body>
+</html>
