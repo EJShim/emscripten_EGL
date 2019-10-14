@@ -1,1 +1,1 @@
-docker run --rm -it -v ${pwd}:/work -w /work/build vtk-opengl2 cmake -DVTK_DIR:PATH=/VTK-BUILD-GL2 ..
+docker run --rm -it -v ${pwd}:/work -w /work/build vtk-egl cmake -DVTK_DIR:PATH=/VTK-build_EGL ..
