@@ -26,6 +26,11 @@
 #include "vtk_glew.h"
 #include "vtksys/SystemTools.hxx"
 
+#include <iostream>
+#include "vtkUnsignedCharArray.h"
+#include "vtkRenderTimerLog.h"
+#include "vtkOpenGLState.h"
+
 #include <cassert>
 #include <sstream>
 #include <EGL/egl.h>
@@ -192,7 +197,6 @@ K_EGLRenderWindow::~K_EGLRenderWindow()
 void K_EGLRenderWindow::Frame()
 {
 
-  std::cout << "Frame Called" << std::endl;
   vtkInternals* impl = this->Internals;
   this->MakeCurrent();
   if (this->OwnWindow)
@@ -234,24 +238,26 @@ void K_EGLRenderWindow::SetStereoCapableWindow(vtkTypeBool capable)
   }
 }
 
+void K_EGLRenderWindow::StereoUpdate(){
+  glDrawElements(GL_TRIANGLES, 100, GL_UNSIGNED_SHORT, (const void *) 0);
+}
+
 // Specify the size of the rendering window.
 void K_EGLRenderWindow::SetSize(int width, int height)
 {
   this->Superclass::SetSize(width, height);
   vtkInternals* impl = this->Internals;
 
-  if( this->OwnWindow  &&
-      impl->Display != EGL_NO_DISPLAY &&
-      impl->Surface != EGL_NO_SURFACE)
-  {
+  // if( this->OwnWindow  && impl->Display != EGL_NO_DISPLAY && impl->Surface != EGL_NO_SURFACE)
+  // {
     // We only need to resize the window if we own it
-    int w, h;
-    this->GetEGLSurfaceSize(&w, &h);
-    if (w != this->Size[0] || h != this->Size[1])
-    {
+    // int w, h;
+    // this->GetEGLSurfaceSize(&w, &h);
+    // if (w != this->Size[0] || h != this->Size[1])
+    // {
       this->ResizeWindow(this->Size[0], this->Size[1]);
-    }
-  }
+    //}
+  //}
 }
 
 void K_EGLRenderWindow::CreateAWindow()
@@ -288,8 +294,8 @@ int K_EGLRenderWindow::GetNumberOfDevices()
 void K_EGLRenderWindow::SetXWindowAsDisplay(){
   vtkInternals* impl = this->Internals;
 
-  Display *x_display = NULL;
-  
+
+  static Display *x_display;  
   Window root;
   XSetWindowAttributes swa;
   XSetWindowAttributes  xattr;
@@ -305,10 +311,6 @@ void K_EGLRenderWindow::SetXWindowAsDisplay(){
      * X11 native display initialization
      */
     x_display = XOpenDisplay(NULL);
-    if ( x_display == NULL )
-    {
-        return;
-    }
 
     root = DefaultRootWindow(x_display);
 
@@ -349,8 +351,8 @@ void K_EGLRenderWindow::SetXWindowAsDisplay(){
        &xev );
 
     
-    impl->Display = eglGetDisplay((EGLNativeDisplayType)x_display);
-    impl->Window = (EGLNativeWindowType) win;
+    impl->Display = eglGetDisplay(reinterpret_cast<EGLNativeDisplayType>(x_display) );
+    impl->Window = (EGLNativeWindowType)(win);
 }
 void K_EGLRenderWindow::SetDeviceAsDisplay(int deviceIndex)
 {
@@ -398,6 +400,7 @@ void K_EGLRenderWindow::SetShowWindow(bool val)
 void K_EGLRenderWindow::ResizeWindow(int width, int height)
 {
 
+  std::cout << "Resize Window Called" << std::endl;
   vtkInternals* impl = this->Internals;
   /*
    * Here specify the attributes of the desired configuration.
@@ -406,16 +409,7 @@ void K_EGLRenderWindow::ResizeWindow(int width, int height)
    */
   EGLint surfaceType, clientAPI;
   const EGLint* contextAttribs;
-// #ifdef ANDROID
-//   surfaceType = EGL_WINDOW_BIT;
-//   clientAPI = EGL_OPENGL_ES2_BIT;
-//   const EGLint contextES2[] =
-//     {
-//     EGL_CONTEXT_CLIENT_VERSION, 2,
-//     EGL_NONE
-//     };
-//   contextAttribs = contextES2;
-// #else
+
   // arguably you could have EGL_WINDOW_BIT here as well
   surfaceType = EGL_WINDOW_BIT;
   clientAPI = EGL_OPENGL_ES2_BIT;
@@ -456,7 +450,9 @@ void K_EGLRenderWindow::ResizeWindow(int width, int height)
     
     // this->SetDeviceAsDisplay(this->DeviceIndex);
     this->SetXWindowAsDisplay();
-    
+    if(impl->Display == EGL_NO_DISPLAY){
+      std::cout << "no display" << std::endl;
+    }
     
     // try to use the default display
     // if (impl->Display == EGL_NO_DISPLAY)
@@ -466,8 +462,6 @@ void K_EGLRenderWindow::ResizeWindow(int width, int height)
 
     EGLint major = 0, minor = 0;
     vtkEGLDisplayInitializationHelper::Initialize(impl->Display, &major, &minor);
-
-    std::cout << major << "," << minor << std::endl;
   }
 
 
@@ -496,11 +490,13 @@ void K_EGLRenderWindow::ResizeWindow(int width, int height)
 #endif
 
 
+
+  impl->Context = eglCreateContext(impl->Display, config, EGL_NO_CONTEXT, contextAttribs);
+  
+  std::cout << "context created" << std::endl;
   if (impl->Context == EGL_NO_CONTEXT)
   {
-
-    std::cout << "Creaet Context "<< std::endl;
-    impl->Context = eglCreateContext(impl->Display, config, EGL_NO_CONTEXT, contextAttribs);
+    std::cout << "something worng with context creation" << std::endl;
   }
 
   if (impl->Surface != EGL_NO_SURFACE)
@@ -516,13 +512,10 @@ void K_EGLRenderWindow::ResizeWindow(int width, int height)
 
   this->MakeCurrent();
 
-  std::cout << " Make Current Done" << std::endl;
-
   EGLint w, h;
   eglQuerySurface(impl->Display, impl->Surface, EGL_WIDTH, &w);
   eglQuerySurface(impl->Display, impl->Surface, EGL_HEIGHT, &h);
 
-  std::cout << w << "," << h << std::endl;
   this->Size[0] = w;
   this->Size[1] = h;
 }
@@ -587,10 +580,13 @@ void K_EGLRenderWindow::WindowInitialize (void)
 // Initialize the rendering window.
 void K_EGLRenderWindow::Initialize (void)
 {
+  std::cout << "Initialize!" << std::endl;
   vtkInternals* impl = this->Internals;
   if (impl->Context == EGL_NO_CONTEXT)
   {
+    std::cout << "No  Context" << std::endl;
     this->WindowInitialize();
+    std::cout << "Initialized" << std::endl;
   }
   this->Initialized = true;
 }
@@ -655,7 +651,6 @@ void K_EGLRenderWindow::PrintSelf(ostream& os, vtkIndent indent)
 
 void K_EGLRenderWindow::MakeCurrent()
 {
-
   vtkInternals* impl = this->Internals;
   if (impl->Display != EGL_NO_DISPLAY &&
       impl->Context != EGL_NO_CONTEXT &&
@@ -712,13 +707,42 @@ void K_EGLRenderWindow::SetWindowName(const char *name)
   vtkOpenGLRenderWindow::SetWindowName( name );
 }
 
-void K_EGLRenderWindow::Render()
-{
-  // Now do the superclass stuff
+// void K_EGLRenderWindow::Render()
+// {
+//   // if we are in the middle of an abort check then return now
+//   if (this->InAbortCheck)
+//   {
+//     return;
+//   }
 
-  std::cout << "Render" << std::endl;
-  this->vtkOpenGLRenderWindow::Render();
-}
+//   // if we are in a render already from somewhere else abort now
+//   if (this->InRender)
+//   {
+//     return;
+//   }
+
+//   // if SetSize has not yet been called (from a script, possible off
+//   // screen use, other scenarios?) then call it here with reasonable
+//   // default values
+//   this->SetSize(300, 300);
+  
+//   // reset the Abort flag
+//   this->AbortRender = 0;
+//   this->InRender = 1;
+
+
+//   std::cout << "Starting Rendering Mehtod" << std::endl;
+
+//   this->InvokeEvent(vtkCommand::StartEvent,nullptr);
+//   this->NeverRendered = 0;
+
+//   this->Start();
+//   std::cout << "Started" << std::endl;
+
+//   // glDrawBuffer(static_cast<GLenum>(this->GetBackLeftBuffer()));
+//   // glReadBuffer(static_cast<GLenum>(this->GetBackLeftBuffer()));
+//   glDrawElements(GL_TRIANGLES, 100, GL_UNSIGNED_SHORT, (const void *) 0);
+// }
 
 //----------------------------------------------------------------------------
 void K_EGLRenderWindow::HideCursor()

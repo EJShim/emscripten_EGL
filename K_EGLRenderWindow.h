@@ -72,6 +72,7 @@ public:
    */
   virtual void Finalize(void) override;
 
+  virtual void StereoUpdate(void) override;
   /**
    * Change the window to fill the entire screen.
    */

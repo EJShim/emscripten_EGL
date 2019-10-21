@@ -1,1 +1,1 @@
-docker run --rm -it -v ${pwd}:/work -w /work/build vtk-egl cmake -DVTK_DIR:PATH=/VTK-build_EGL ..
+docker run --rm -it -v ${pwd}:/work -w /work/build vtk-egl cmake -DVTK_DIR:PATH=/install-prefix/lib/cmake/vtk-8.2 ..

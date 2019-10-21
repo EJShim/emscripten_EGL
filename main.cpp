@@ -2,6 +2,9 @@
 #include <vtkSmartPointer.h>
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
+// #include <vtkOpenGLRenderWindow.h>
+#include <vtkEGLRenderWindow.h>
+#include <vtkGenericOpenGLRenderWindow.h>
 #include "K_EGLRenderWindow.h"
 
 
